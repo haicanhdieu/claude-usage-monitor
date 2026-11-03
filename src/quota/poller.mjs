@@ -20,9 +20,10 @@ export function parseUsage(body, now) {
   return { fiveHour: five.entry, sevenDay: seven.entry };
 }
 
+// Usage endpoint budget is ~1 request / 2 min (retry-after is always 0); keep intervals above that.
 export function createPoller({
   getToken, fetch = globalThis.fetch, now = Date.now, setTimer = setTimeout, clearTimer = clearTimeout,
-  intervalMs = 60_000, maxBackoffMs = 300_000, minRefreshGapMs = 10_000, rateLimitFloorMs = 120_000,
+  intervalMs = 150_000, maxBackoffMs = 300_000, minRefreshGapMs = 130_000, rateLimitFloorMs = 120_000,
 } = {}) {
   const state = { fiveHour: null, sevenDay: null, status: 'pending', lastAttemptAt: null, lastOkAt: null };
   let failures = 0;

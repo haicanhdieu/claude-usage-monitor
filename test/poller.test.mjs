@@ -33,7 +33,7 @@ for (const [name, body] of [
   ['array', []], ['null', null], ['no windows', {}],
 ]) test(`parseUsage: ${name} → null`, () => assert.equal(parseUsage(body, NOW), null));
 
-function harness({ tokens, responses, startNow = NOW } = {}) {
+function harness({ tokens, responses, startNow = NOW, opts = { intervalMs: 60_000, minRefreshGapMs: 10_000 } } = {}) {
   const h = { now: startNow, timers: [], delays: [], fetchCalls: 0, tokenCalls: 0 };
   const tokenQueue = [...(tokens ?? [])];
   const respQueue = [...(responses ?? [])];
@@ -48,6 +48,7 @@ function harness({ tokens, responses, startNow = NOW } = {}) {
     getToken, fetch, now: () => h.now,
     setTimer: (fn, d) => { h.delays.push(d); h.timers.push(fn); return h.timers.length; },
     clearTimer: () => { h.cleared = true; },
+    ...opts,
   });
   return h;
 }
@@ -165,4 +166,18 @@ test('429 with retry-after: 0 still waits a floor; larger retry-after is honoure
   const h2 = harness({ responses: [{ status: 429, headers: { get: () => '900' } }] });
   h2.poller.start(); await new Promise(r => setImmediate(r));
   assert.equal(h2.delays[0], 900_000);
+});
+
+// The usage endpoint admits roughly one request per ~2 min (measured: 60s spacing → ~50% 429,
+// 130s spacing → 0% 429, retry-after is always 0). Defaults must stay under that budget.
+test('default cadence stays under the endpoint budget (~1 req / 2 min)', async () => {
+  const h = harness({ responses: [okRes], opts: {} });
+  h.poller.start(); await new Promise(r => setImmediate(r));
+  assert.ok(h.delays[0] >= 130_000, `steady-state interval ${h.delays[0]}`);
+  h.now += 20_000; // e.g. window focus shortly after a poll
+  await h.poller.refresh();
+  assert.equal(h.fetchCalls, 1, 'focus refresh inside the budget window must not hit the endpoint');
+  h.now += 115_000;
+  await h.poller.refresh();
+  assert.equal(h.fetchCalls, 2);
 });
