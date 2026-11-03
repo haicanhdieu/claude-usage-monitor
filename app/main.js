@@ -9,8 +9,11 @@ let base = '';
 let poller = null;
 let ws = null; // windowState module
 let stateFile = '';
-const TINY = { width: 260, height: 140 };
+const TINY = { width: 140, height: 62 };
+const TINY_OPACITY = 0.55;
 let quitting = false;
+let clickThrough = false; // tiny view: off by default so it can be dragged; session-only
+
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -38,6 +41,8 @@ async function start() {
   const tray = createTray({
     onOpen: () => { win.show(); win.focus(); },
     onToggleMode: () => setMode(mode === 'tiny' ? 'full' : 'tiny'),
+    getClickThrough: () => clickThrough,
+    setClickThrough: (v) => { clickThrough = v; if (mode === 'tiny' && win && !win.isDestroyed()) win.setIgnoreMouseEvents(clickThrough); },
     getLoginItem: () => app.getLoginItemSettings().openAtLogin,
     setLoginItem: (openAtLogin) => app.setLoginItemSettings({ openAtLogin }),
     onQuit: () => app.quit(),
@@ -77,10 +82,12 @@ function createWindow() {
       return { x: wa.x + wa.width - TINY.width - 20, y: wa.y + 20 };
     })();
     win = new BrowserWindow({
-      ...TINY, ...pos, title: 'Claude Usage', frame: false, transparent: true, hasShadow: true,
+      ...TINY, ...pos, title: 'Claude Usage', frame: false, transparent: true, hasShadow: false,
       resizable: false, maximizable: false, fullscreenable: false, skipTaskbar: true, alwaysOnTop: true, webPreferences,
     });
     win.setAlwaysOnTop(true, 'floating');
+    win.setOpacity(TINY_OPACITY);
+    win.setIgnoreMouseEvents(clickThrough); // tray menu toggles this
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     win.loadURL(`${base}/tiny.html`);
     win.on('moved', () => { const [x, y] = win.getPosition(); tinyPos = { x, y }; persist(); });
