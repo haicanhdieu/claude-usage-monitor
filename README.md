@@ -1,79 +1,171 @@
-# Claude Code live usage dashboard
+# Claude Usage Monitor
 
-A lightweight **local** Node.js dashboard. Shows 5-hour / 7-day quota, current context, daily token history, **observed live CLI sessions**, **subagents**, their **resolved models**, per-agent tokens and status. No third-party dependencies for the server or collectors. Node.js 20+.
+A real-time quota and token usage monitor for Claude Code. Shows your account-wide 5-hour / 7-day quota, live sessions, subagents, and per-session token consumption. Available as a native Mac app with tray widget or as a Node.js server dashboard.
 
-## Mac app (recommended)
+## Quick Start (Mac App)
 
-A double-clickable Electron app with a menu-bar tray (`5h 42% · 7d 18%`). It reads your **account-wide** 5-hour / 7-day quota directly from Anthropic using the Claude Code login already in your Keychain, so no hooks are needed for quota.
+1. **Clone and install:**
+   ```bash
+   git clone https://github.com/minh-nguyen-kms/claude-usage-monitor.git
+   cd claude-usage-monitor
+   npm install
+   ```
 
-- **Build:** `npm install && npm run dist` → `dist/Claude Usage Monitor-*.dmg` and `dist/mac-arm64/Claude Usage Monitor.app`.
-- **Install:** the app is unsigned. Drag it to Applications, then **right-click → Open** the first time.
-- **Keychain prompt:** on first launch macOS asks to let the app read the `Claude Code-credentials` item. Choose Allow (or Always Allow). The token is kept in memory only; the app never refreshes it, writes it to disk, or sends it to the UI.
-- **Tray menu:** Open, Launch at login, Quit. Closing the window hides it to the tray.
-- **Fallback:** if Keychain access is denied or you are signed out, the dashboard shows a status message and falls back to hook-derived quota (badge `hook`; badge `account` when read from Anthropic). Stale values are dimmed with a `stale · Nm old` marker.
-- `node server.mjs` still works as before (CLI mode, no account quota unless run through the app). Run `npm test` for the test suite.
+2. **Build the app:**
+   ```bash
+   npm run dist
+   ```
+   → Creates `dist/Claude Usage Monitor-*.dmg` and `dist/mac-arm64/Claude Usage Monitor.app`
 
-The hooks and status lines below are now **optional for quota**, but they still provide per-session context, live sessions and subagents.
+3. **Install:**
+   - Open the `.dmg` file and drag the app to Applications
+   - Or double-click the app in `dist/mac-arm64/` (unsigned, so right-click → Open on first launch)
 
-## Run (hooks / CLI mode)
+4. **Run:**
+   - App reads your Claude Code credentials from Keychain (no configuration needed)
+   - Menu bar shows quota: `5h 42% · 7d 18%`
+   - Click tray icon to open dashboard, toggle tiny view, or launch at login
 
-1. Extract the archive, enter the folder, and run `pwd`. Keep the **absolute path**.
-2. Edit `~/.claude/settings.json`, merging the keys with your existing configuration. Replace `/ABSOLUTE/PATH` with the extracted directory. **Do not overwrite other settings or hooks.**
+## Features
 
-```json
-{
-  "statusLine": {
-    "type": "command",
-    "command": "node /ABSOLUTE/PATH/claude-usage-monitor/statusline.mjs"
-  },
-  "subagentStatusLine": {
-    "type": "command",
-    "command": "node /ABSOLUTE/PATH/claude-usage-monitor/subagent-statusline.mjs"
-  },
-  "hooks": {
-    "SessionStart": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "Stop": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "SessionEnd": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "SubagentStart": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "SubagentStop": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
-    "PostModelSwitch": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }]
-  }
-}
-```
+**Mac App:**
+- 📊 Menu bar tray showing real-time account quota
+- 🔍 Full dashboard with 5h/7d quota, daily history, live sessions
+- 📍 Always-on-top tiny gauge view (click-through toggle on/off)
+- 🔄 Auto-polling account quota from Anthropic (OAuth token via Keychain)
+- ⚙️ Launch at login, window state persistence, single instance lock
+- 🎯 Subagent tracking and model resolution
 
-3. For daily usage aggregates (optional):
+**Optional CLI Server & Hooks:**
+- Web dashboard at `http://127.0.0.1:4319`
+- CLI status lines for terminal output
+- Session lifecycle hooks (SessionStart, SessionEnd, UserPromptSubmit, etc.)
+- Token usage tracking per session and per model
 
+**No bloat:**
+- Zero third-party dependencies for server/collectors
+- Keychain-based authentication (secure, no token storage)
+- Incremental parsing for large transcripts (8 MB/refresh limit)
+- Runs on Node.js 20+
+
+## CLI Server Mode (Optional)
+
+For a web-only dashboard without the Mac app, or to use hooks for session tracking:
+
+1. **Start the server:**
+   ```bash
+   node server.mjs
+   ```
+   Opens `http://127.0.0.1:4319` with full dashboard.
+
+2. **Add hooks to `~/.claude/settings.json` (optional, for per-session tracking):**
+
+   First, get your absolute path:
+   ```bash
+   pwd  # copy this
+   ```
+
+   Then merge into `~/.claude/settings.json`:
+   ```json
+   {
+     "statusLine": {
+       "type": "command",
+       "command": "node /ABSOLUTE/PATH/claude-usage-monitor/statusline.mjs"
+     },
+     "subagentStatusLine": {
+       "type": "command",
+       "command": "node /ABSOLUTE/PATH/claude-usage-monitor/subagent-statusline.mjs"
+     },
+     "hooks": {
+       "SessionStart": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "UserPromptSubmit": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "Stop": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "SessionEnd": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "SubagentStart": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "SubagentStop": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }],
+       "PostModelSwitch": [{ "hooks": [{ "type": "command", "command": "node /ABSOLUTE/PATH/claude-usage-monitor/hook.mjs" }] }]
+     }
+   }
+   ```
+
+   **Note:** Do not overwrite other settings or hooks.
+
+3. Start Claude Code and open sessions—hooks will track activity automatically.
+
+## How It Works
+
+**Mac App Quota (Account-wide):**
+- Reads OAuth token from Keychain (`Claude Code-credentials`)
+- Polls account quota from Anthropic every 150s (stays under ~1 req/2min endpoint budget)
+- Retries with backoff on 429 errors
+- Falls back to hook-derived quota if Keychain denied or signed out
+- Displays quota badges: `account` (live), `hook` (from events), `stale` (older than 10m)
+
+**Dashboard & Hooks (Optional):**
+- `statusLine`: Shows session ID, model, current/max context, 5h/7d quota in terminal
+- `subagentStatusLine`: Displays active subagent panels with status and token counts
+- Lifecycle hooks (SessionStart, SessionEnd, UserPromptSubmit, Stop, SubagentStart, SubagentStop, PostModelSwitch) emit JSONL to `~/.claude-usage-monitor/events`
+- Transcripts parsed from `~/.claude/session-id/transcript.jsonl` and agent subagent JSON files
+- **Privacy:** Only reads model, token counts, and API usage—never extracts prompts or file contents
+- Incremental parsing: up to 8 MB per file per refresh (totals initially incomplete for long sessions)
+
+**Token Counting:**
+- Tracks: input tokens, output tokens, cache reads, cache writes
+- `consumed incl. cache` = input + output + cache reads (cache writes are write cost, not traffic)
+- This is **traffic**, not remaining quota (which comes from account endpoint)
+- Cached inputs count as token traffic (the cost to write/read cache), not new text
+
+**Status Indicators:**
+- `active`: Event in last 2 minutes (not guaranteed OS process still running)
+- `idle`: Stop hook occurred
+- `ended`: SessionEnd fired
+- `stale (unconfirmed)`: No updates for 2+ minutes (crashed or Claude Code exited)
+- Stale values dimmed with age marker (`stale · 5m old`)
+
+**Proxy/Gateway Note:**
+- Third-party gateways (9Router, etc.) may serve different model than requested
+- Local telemetry shows what Claude Code saw, not what endpoint actually served
+- Account quota may be unavailable with API-key or proxy sessions
+
+## Development
+
+**Build and run locally:**
 ```bash
-npm install -g ccusage
+npm install
+npm run app          # Run Electron app in dev
+npm run dist         # Build DMG and standalone app
+npm run icon         # Regenerate app icon from SVG
+npm test             # Run test suite (Node --test)
+npm start            # Run CLI server only
 ```
 
-4. In the extracted folder, start the server:
+**Project structure:**
+- `app/` — Electron main process, tray, window management
+- `src/` — Server, quota polling, Keychain integration
+- `public/` — Web UI (HTML, CSS, gauge visualization)
+- `test/` — Unit tests
+- `scripts/` — Icon generation
 
-```bash
-node server.mjs
-```
+**Key modules:**
+- `src/quota/poller.mjs` — Account quota polling with backoff
+- `src/quota/keychain.mjs` — Secure Keychain token retrieval
+- `src/live.mjs` — Event aggregation and transcript parsing
+- `src/windowState.mjs` — Persist app window/mode state
 
-5. Open http://127.0.0.1:4319. **Start or resume Claude Code** sessions so they register lifecycle hooks. Run a task that starts subagents.
+## Security & Limitations
 
-## Sources and meaning
+- **Binding:** Server only binds to `127.0.0.1` (localhost). Do not expose on networks without auth.
+- **Data:**
+  - Keychain: Token stored in system Keychain, not disk or RAM (read once per app session)
+  - Events: Append-only JSONL to `~/.claude-usage-monitor/` with owner-only permissions
+  - Transcripts: Only usage counters are read—prompts, files, args never extracted
+- **Stability:** Best-effort monitoring, not a process manager. Schema changes may require updates.
+- **Model tracking:** Main model may switch mid-session; dashboard shows latest known, counters show actual.
+- **Account quota:** May unavailable with proxies, API keys, or 3rd-party gateways.
 
-- `statusLine`: main session ID, project, current model/context, subscription quota percentages. Does **not** describe subagents.
-- `subagentStatusLine`: *visible subagent panel tasks* on current versions, with status, resolved model, tokenCount, contextWindowSize. `agentType` needs Claude Code v2.1.293+. As a hook-like command, it writes snapshots into `~/.claude-usage-monitor/agent-panels` but emits no replacement row, keeping Claude's built-in panel rendering. Earlier versions may not support this feature.
-- Lifecycle hooks: SessionStart, SessionEnd, UserPromptSubmit, Stop, SubagentStart, SubagentStop, PostModelSwitch. Data stored as append-only JSONL events under `~/.claude-usage-monitor/events`. Captures no conversation text.
-- Raw transcripts: discovered from the `transcript_path` officially exposed by statusLine and hooks, and then inside `session-id/subagents/agent-*.jsonl`. The server reads **only** model and API usage counters (input, output, cache reads/writes), and never exposes prompts or file contents. On long logs, the server incrementally parses up to 8 MB per file per refresh, so totals can initially be incomplete. Multiple assistant snapshots for the same API response are deduplicated by message ID.
-- Token usage: “consumed incl. cache” sums each API request's input/output/cache counters; cached inputs are token traffic, not new unique text, and this number is **not** the remaining plan quota.
-- Status honesty: “active/recent” shows events in the last 2 minutes but **doesn't guarantee an open OS process**. “idle” means a Stop hook occurred; “ended” means SessionEnd fired. Crashes may leave old sessions as `stale (unconfirmed)`. A running agent becomes unknown/stale after two minutes without an update. Hook and panel-based activity is near-real-time, not continuous API streaming.
-- Third-party gateways (e.g., 9Router) can replace the actual model behind an alias: local Claude Code telemetry reports what Claude Code requested or resolved, which may not equal the **upstream model actually served**. For upstream verification, you must also ingest the gateway logs. Claude subscription quota data can be absent with proxies/API-key sessions.
+## References
 
-## Security & limits
-
-- Binds to `127.0.0.1`. Do not expose on a public network without authentication.
-- Local files created with owner-only permissions. Tokens, prompts, tool arguments and credentials are not recorded by the collectors.
-- Transcripts are not a formally stable API, so schema changes need handling. The dashboard is best-effort and not a process manager.
-- The main model of a session may switch; the dashboard displays the latest known model, while transcript usage counts by actual logged model.
-
-Official references:
-- https://code.claude.com/docs/en/statusline
-- https://code.claude.com/docs/en/hooks
-- https://code.claude.com/docs/en/monitoring-usage
+- [Claude Code status line docs](https://code.claude.com/docs/en/statusline)
+- [Claude Code hooks docs](https://code.claude.com/docs/en/hooks)
+- [Claude Code monitoring guide](https://code.claude.com/docs/en/monitoring-usage)
+- [GitHub repository](https://github.com/minh-nguyen-kms/claude-usage-monitor)
