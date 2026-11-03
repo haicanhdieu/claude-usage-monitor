@@ -6,7 +6,8 @@
     "test": "node --test",
     "start": "node server.mjs",
     "app": "electron .",
-    "dist": "electron-builder --mac"
+    "dist": "electron-builder --mac",
+    "icon": "electron scripts/make-icon.js"
   },
   "devDependencies": {
     "electron": "^45.2.1",
@@ -20,7 +21,8 @@
       "app/**",
       "src/**",
       "public/**",
-      "package.json"
+      "package.json",
+      "build/icon.png"
     ],
     "mac": {
       "category": "public.app-category.developer-tools",
@@ -28,7 +30,8 @@
         "dmg",
         "dir"
       ],
-      "identity": null
+      "identity": null,
+      "icon": "build/icon.icns"
     }
   }
 }

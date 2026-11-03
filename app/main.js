@@ -1,5 +1,5 @@
 const path = require('node:path');
-const { app, BrowserWindow, ipcMain, screen } = require('electron');
+const { app, BrowserWindow, ipcMain, screen, nativeImage } = require('electron');
 const { createTray } = require('./tray');
 
 let win = null;
@@ -36,6 +36,7 @@ async function start() {
   stateFile = path.join(app.getPath('userData'), 'window-state.json');
   ({ mode, tinyPos } = ws.loadState(stateFile));
 
+  if (process.platform === 'darwin') app.dock?.setIcon(nativeImage.createFromPath(path.join(__dirname, '..', 'build', 'icon.png')));
   createWindow();
 
   const tray = createTray({
