@@ -67,3 +67,16 @@ test('port in use: rejects by default, falls back to a free port when asked', as
     } finally { await second.close(); }
   } finally { await first.close(); }
 });
+
+test('serves tiny view assets with correct types, rejects others', async () => {
+  const s = await startServer({ port: 0, sessionsDir: tmpSessions({}), quotaSource: fake });
+  try {
+    const base = `http://127.0.0.1:${s.port}`;
+    const t = await fetch(`${base}/tiny.html`);
+    assert.equal(t.status, 200); assert.match(t.headers.get('content-type'), /text\/html/);
+    const g = await fetch(`${base}/gauge.mjs`);
+    assert.equal(g.status, 200); assert.match(g.headers.get('content-type'), /javascript/);
+    assert.equal((await fetch(`${base}/../package.json`)).status, 404);
+    assert.equal((await fetch(`${base}/server.mjs`)).status, 404);
+  } finally { await s.close(); }
+});

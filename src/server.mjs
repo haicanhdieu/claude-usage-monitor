@@ -71,6 +71,10 @@ function getDailyUsage() {
 }
 
 const jsonHeaders = { 'content-type': 'application/json; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' };
+const STATIC = {
+  '/tiny.html': { file: 'tiny.html', type: 'text/html; charset=utf-8' },
+  '/gauge.mjs': { file: 'gauge.mjs', type: 'text/javascript; charset=utf-8' },
+};
 const createHandler = ({ dir, quotaSource }) => async (req, res) => {
   if (req.method !== 'GET') { res.writeHead(405); res.end(); return; }
   const pathname = new URL(req.url, 'http://localhost').pathname;
@@ -97,6 +101,12 @@ const createHandler = ({ dir, quotaSource }) => async (req, res) => {
   if (pathname === '/' || pathname === '/index.html') {
     res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
     fs.createReadStream(path.join(__dirname, '../public/index.html')).pipe(res);
+    return;
+  }
+  const asset = STATIC[pathname];
+  if (asset) {
+    res.writeHead(200, { 'content-type': asset.type, 'cache-control': 'no-store', 'x-content-type-options': 'nosniff' });
+    fs.createReadStream(path.join(__dirname, '../public', asset.file)).pipe(res);
     return;
   }
   res.writeHead(404); res.end('Not found');
