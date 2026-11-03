@@ -6,7 +6,7 @@ A real-time quota and token usage monitor for Claude Code. Shows your account-wi
 
 1. **Clone and install:**
    ```bash
-   git clone https://github.com/minh-nguyen-kms/claude-usage-monitor.git
+   git clone https://github.com/haicanhdieu/claude-usage-monitor.git
    cd claude-usage-monitor
    npm install
    ```
@@ -168,4 +168,4 @@ npm start            # Run CLI server only
 - [Claude Code status line docs](https://code.claude.com/docs/en/statusline)
 - [Claude Code hooks docs](https://code.claude.com/docs/en/hooks)
 - [Claude Code monitoring guide](https://code.claude.com/docs/en/monitoring-usage)
-- [GitHub repository](https://github.com/minh-nguyen-kms/claude-usage-monitor)
+- [GitHub repository](https://github.com/haicanhdieu/claude-usage-monitor)
