@@ -29,3 +29,29 @@ test('close() stops accepting connections', async () => {
   await s.close();
   await assert.rejects(fetch(`http://127.0.0.1:${s.port}/api/status`));
 });
+
+test('account quota wins over hook and is tagged', async () => {
+  const now = Date.now();
+  const source = { refresh: async () => {}, getQuota: () => ({
+    fiveHour: { usedPercentage: 55, resetsAt: Math.floor(now / 1000) + 3600, observedAt: now },
+    sevenDay: null, status: 'ok' }) };
+  const sessionsDir = tmpSessions({ fiveHour: { usedPercentage: 40 } });
+  const s = await startServer({ port: 0, sessionsDir, quotaSource: source });
+  try {
+    const body = await (await fetch(`http://127.0.0.1:${s.port}/api/status`)).json();
+    assert.equal(body.quota.fiveHour.source, 'account');
+    assert.equal(body.quota.fiveHour.usedPercentage, 55);
+    assert.equal(body.quotaStatus, 'ok');
+  } finally { await s.close(); }
+});
+
+test('no-credentials falls back to hook and reports quotaStatus', async () => {
+  const source = { refresh: async () => {}, getQuota: () => ({ fiveHour: null, sevenDay: null, status: 'no-credentials' }) };
+  const sessionsDir = tmpSessions({ fiveHour: { usedPercentage: 40 } });
+  const s = await startServer({ port: 0, sessionsDir, quotaSource: source });
+  try {
+    const body = await (await fetch(`http://127.0.0.1:${s.port}/api/status`)).json();
+    assert.equal(body.quota.fiveHour.source, 'hook');
+    assert.equal(body.quotaStatus, 'no-credentials');
+  } finally { await s.close(); }
+});

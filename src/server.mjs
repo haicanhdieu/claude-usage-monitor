@@ -7,6 +7,7 @@ import os from 'node:os';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { execFile } from 'node:child_process';
 import { getLive } from './live.mjs';
+import { mergeQuota } from './quota/merge.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultSessionsDir = () => path.join(process.env.CLAUDE_USAGE_MONITOR_DIR || path.join(os.homedir(), '.claude-usage-monitor'), 'sessions');
@@ -77,12 +78,19 @@ const createHandler = ({ dir, quotaSource }) => async (req, res) => {
     const sessions = readSessions(dir);
     const daily = await getDailyUsage();
     res.writeHead(200, jsonHeaders);
+    const now = Date.now();
+    const merged = mergeQuota({
+      polled: quotaSource.getQuota(),
+      hook: { fiveHour: latestQuota(sessions, 'fiveHour'), sevenDay: latestQuota(sessions, 'sevenDay') },
+      now,
+    });
     res.end(JSON.stringify({
-      quota: { fiveHour: latestQuota(sessions, 'fiveHour'), sevenDay: latestQuota(sessions, 'sevenDay') },
+      quota: { fiveHour: merged.fiveHour, sevenDay: merged.sevenDay },
+      quotaStatus: merged.status,
       sessions: sessions.filter(s => Date.now() - s.updatedAt < 24 * 60 * 60 * 1000).slice(0, 12),
       live: getLive(sessions),
       daily,
-      now: Date.now(),
+      now,
     }));
     return;
   }
