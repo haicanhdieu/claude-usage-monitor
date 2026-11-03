@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"/><meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Claude Code Usage</title>
+<style>
+:root{color-scheme:dark;font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}*{box-sizing:border-box}
+body{margin:0;background:#101717;color:#e4ede9}main{max-width:1040px;margin:0 auto;padding:48px 24px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:34px}h1{font-size:28px;letter-spacing:-.05em;margin:0 0 6px}h2{font-size:15px;margin:0 0 24px}h3{font-size:13px;color:#91a8a3;margin:0 0 12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+p{margin:0;color:#91a8a3;font-size:13px;line-height:1.6}.live{display:flex;align-items:center;gap:7px;color:#b6c9c3;font-size:13px}.dot{height:8px;width:8px;background:#59c8a2;border-radius:50%}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.card{border:1px solid #30413d;background:#1a2523;border-radius:15px;padding:24px}.metric{font-size:38px;font-weight:650;letter-spacing:-.05em;margin:3px 0 2px}.sub{color:#91a8a3;font-size:13px}.bar{height:11px;background:#344340;border-radius:999px;overflow:hidden;margin:19px 0 10px}.fill{height:100%;width:0;background:linear-gradient(90deg,#438875,#71d7b2);border-radius:999px;transition:width .3s}.between{display:flex;justify-content:space-between;gap:10px;align-items:center}.section{margin-top:18px}.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}.stat{border:1px solid #30413d;border-radius:12px;padding:16px;background:#1a2523}.stat strong{display:block;font-size:23px;margin:8px 0 4px;letter-spacing:-.04em}.stat span{color:#91a8a3;font-size:12px}.session{display:flex;gap:12px;justify-content:space-between;align-items:center;border-top:1px solid #30413d;padding:14px 0}.session strong{font-size:14px}.session small{display:block;color:#91a8a3;margin-top:4px}.pill{border-radius:999px;padding:5px 9px;background:#2f4841;color:#b3e5d1;font-size:12px;font-weight:600}footer{margin:24px 0;color:#91a8a3;font-size:12px}a{color:#91d4bd} .warn{color:#ecc286}.live-session{border:1px solid #30413d;border-radius:12px;padding:15px;margin-top:12px;background:#141e1c}.live-session .titleline{display:flex;align-items:center;gap:9px;justify-content:space-between;flex-wrap:wrap}.live-session strong{font-size:14px}.agent-row{padding:12px 10px 12px 22px;border-left:2px solid #3a6658;margin:10px 0 0 8px;display:flex;justify-content:space-between;gap:14px;background:#192522;border-radius:0 8px 8px 0}.agent-row .meta,.live-session .meta{font-size:12px;color:#91a8a3;margin-top:4px}.agent-row b{font-size:13px}.agent-row .detail{text-align:right;flex-shrink:0}.agent-row .model{color:#bfe8da;font-size:12px}.pill.running{background:#275d49;color:#aaf0d4}.pill.completed{background:#32433c;color:#bdd6cb}.pill.stale{background:#524632;color:#ffe0a3}.totals{font-variant-numeric:tabular-nums;font-size:12px;color:#c8d6d0}#sessionsEmpty{color:#91a8a3;font-size:13px}
+@media(max-width:700px){main{padding:24px 14px}.grid{grid-template-columns:1fr}.stats{grid-template-columns:repeat(2,minmax(0,1fr))}h1{font-size:24px}.metric{font-size:33px}}
+</style></head><body><main>
+<header><div><h1>Claude Code Usage</h1><p>Local telemetry · Quota limits and token consumption</p></div><div class="live"><span class="dot"></span><span id="lastSync">Waiting for data</span></div></header>
+<section class="grid" aria-label="Subscription limits">
+ <article class="card"><h3>5-hour quota</h3><div class="between"><div class="metric" id="h5">—</div><div class="sub" id="h5Used">— used</div></div><div class="bar"><div id="h5Bar" class="fill"></div></div><p id="h5Reset">Run a Claude Code request to load quota</p></article>
+ <article class="card"><h3>Weekly quota</h3><div class="between"><div class="metric" id="d7">—</div><div class="sub" id="d7Used">— used</div></div><div class="bar"><div id="d7Bar" class="fill"></div></div><p id="d7Reset">Run a Claude Code request to load quota</p></article>
+</section>
+<section class="section card"><div class="between"><h2>Today's Claude token consumption</h2><p id="dailyDate"></p></div>
+ <div class="stats"><div class="stat"><span>Total tokens (incl. cache)</span><strong id="tokens">—</strong></div><div class="stat"><span>Input</span><strong id="input">—</strong></div><div class="stat"><span>Output</span><strong id="output">—</strong></div><div class="stat"><span>API-equivalent cost</span><strong id="cost">—</strong></div></div>
+ <p style="margin-top:15px" id="dailyHelp">Optional local ccusage integration</p>
+</section>
+<section class="section card"><div class="between"><h2>CLI sessions &amp; subagents</h2><p id="liveCount"></p></div><div id="liveSessions"><p>No live telemetry yet. Configure the lifecycle hooks and subagent status line.</p></div></section>
+<section class="section card"><h2>Recent CLI sessions</h2><div id="sessions"><p id="sessionsEmpty">No sessions yet. The collector updates when Claude Code sends status-line events.</p></div></section>
+<footer>Quota remaining is a percentage of your plan's rolling allowance, not a fixed token balance. Token counts and estimated API cost are sourced from local logs. Data refreshes every 5 seconds.</footer>
+</main><script>
+const $ = id => document.getElementById(id);
+const fmt = n => Number(n || 0).toLocaleString('en-US');
+const timeLeft = epoch => { if(!epoch)return 'Reset time unavailable'; const m=Math.max(0,Math.ceil((epoch*1000-Date.now())/60000)); if(m===0)return 'Reset due'; const d=Math.floor(m/1440),h=Math.floor(m%1440/60),mins=m%60; return `Resets in ${d?d+'d ':''}${h? h+'h ':''}${mins}m`; };
+const clean = str => String(str ?? '—').replace(/[<>]/g, '');
+function elem(tag,cl,txt){const e=document.createElement(tag);if(cl)e.className=cl;if(txt!=null)e.textContent=txt;return e;}
+function sessionAndAgents(all){
+ const host=$('liveSessions');host.replaceChildren();
+ const GRACE=15*60*1000,now=Date.now();
+ const list=all.filter(s=>!(s.status==='ended'&&now-s.lastSeen>GRACE));
+ $('liveCount').textContent=`${list.length} active (${all.length-list.length} ended >15m hidden)`;
+ if(!list.length){host.append(elem('p','','No sessions yet. Open/restart Claude Code after adding hooks, or send a message with the statusLine configured.'));return;}
+ for(const s of list){
+  const card=elem('div','live-session');const top=elem('div','titleline');
+  const left=elem('div');left.append(elem('strong','',s.name||s.project||'Unnamed session'));
+  left.append(elem('div','meta',`${s.project||'Unknown'} · ${s.model||'Unknown model'} · last event ${new Date(s.lastSeen).toLocaleTimeString()}`));
+  const right=elem('div');right.append(elem('span','pill '+(s.status==='active/recent'?'running':s.status==='ended'?'completed':'stale'),s.status));
+  top.append(left,right);card.append(top);
+  const agents=(s.agents||[]).filter(a=>!(a.status==='completed'&&now-(a.updatedAt||0)>GRACE));
+  const info=elem('div','meta',`${fmt(s.usage?.total||0)} total recorded tokens (input + output + cache) · ${agents.length} subagent(s)${s.usage?.isComplete?'':' · some logs still parsing'}`);card.append(info);
+  if(agents.length){for(const a of agents){
+    const row=elem('div','agent-row');const desc=elem('div');desc.append(elem('b','',a.name||a.agentType||a.agentId||'Subagent'));
+    if(a.description)desc.append(elem('div','meta',a.description));
+    const detail=elem('div','detail');detail.append(elem('div','model',a.model||a.usage?.model||'Model not resolved'));
+    const status=elem('div','meta',a.status||'unknown');detail.append(status);
+    if(a.usage)detail.append(elem('div','totals',`${fmt(a.usage.total)} consumed (incl. cache)`));
+    if(a.tokenCount!=null)detail.append(elem('div','meta',`${fmt(a.tokenCount)} panel tokens${a.contextWindowSize?` / ${fmt(a.contextWindowSize)} ctx`:''}`));
+    row.append(desc,detail);card.append(row);
+  }}else{card.append(elem('div','meta','No recent subagents.'));}
+  host.append(card);
+ }
+}
+function quota(prefix,q){const pct=Number(q?.usedPercentage);const valid=q && Number.isFinite(pct);$(prefix).textContent=valid?`${Math.max(0,100-pct).toFixed(0)}% left`:'Unavailable';$(prefix+'Used').textContent=valid?`${pct.toFixed(1)}% used`:'No quota data';$(prefix+'Bar').style.width=valid?`${Math.max(0,Math.min(100,pct))}%`:'0%';$(prefix+'Reset').textContent=valid?`${timeLeft(q.resetsAt)} · Last observed ${new Date(q.observedAt).toLocaleTimeString()}`:'Subscription data appears after Claude responds; may be absent with API keys/proxies.';}
+async function update(){try{const r=await fetch('/api/status',{cache:'no-store'}); if(!r.ok) throw Error('status'); const s=await r.json();quota('h5',s.quota.fiveHour);quota('d7',s.quota.sevenDay);sessionAndAgents(s.live||[]);$('lastSync').textContent=`Updated ${new Date().toLocaleTimeString()}`;const d=s.daily;$('dailyDate').textContent=d.date || '';$('tokens').textContent=d.available?fmt(d.totalTokens):'—';$('input').textContent=d.available?fmt(d.inputTokens):'—';$('output').textContent=d.available?fmt(d.outputTokens):'—';$('cost').textContent=d.available?`$${Number(d.estimatedCostUSD||0).toFixed(2)}`:'—';$('dailyHelp').textContent=d.available?`Cache read: ${fmt(d.cacheReadTokens)} · Cache write: ${fmt(d.cacheCreationTokens)} · Local API-price estimate, not subscription billing`:(d.reason||'ccusage unavailable');const host=$('sessions');host.replaceChildren();if(!s.sessions.length){const p=document.createElement('p');p.textContent='No sessions yet. Configure the Claude Code statusLine collector and send a message.';host.appendChild(p);}for(const sess of s.sessions){const row=document.createElement('div');row.className='session';const desc=document.createElement('div');const label=document.createElement('strong');label.textContent=clean(sess.project||'Unknown project');desc.appendChild(label);const meta=document.createElement('small');const size=sess.context?.size?`${fmt(sess.context?.inputTokens)} / ${fmt(sess.context.size)} input-context tokens`:'Context not yet available';meta.textContent=`${clean(sess.model)} · ${size} · ${new Date(sess.updatedAt).toLocaleTimeString()}`;desc.appendChild(meta);const badge=document.createElement('span');badge.className='pill';badge.textContent=sess.context?.usedPercentage!=null?`${Math.round(sess.context.usedPercentage)}% context`:'—';row.append(desc,badge);host.appendChild(row);}}
+catch{$('lastSync').textContent='Disconnected';}}
+update();setInterval(update,5000);
+</script></body></html>
