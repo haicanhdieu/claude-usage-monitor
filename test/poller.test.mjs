@@ -42,7 +42,7 @@ function harness({ tokens, responses, startNow = NOW } = {}) {
     h.fetchCalls++; h.lastInit = init; h.lastUrl = url;
     const r = respQueue.length > 1 ? respQueue.shift() : respQueue[0];
     if (r instanceof Error) throw r;
-    return { status: r.status, json: async () => r.body };
+    return { status: r.status, headers: r.headers, json: async () => r.body };
   };
   h.poller = createPoller({
     getToken, fetch, now: () => h.now,
@@ -113,11 +113,12 @@ test('backoff doubles to cap then resets on success', async () => {
   await new Promise(r => setImmediate(r));
   assert.deepEqual(h.delays, [60000, 120000, 240000, 300000, 300000, 60000, 60000]);
 });
-test('network throw and 429 → error with backoff', async () => {
+test('network throw then 429 → error then rate-limited, backing off', async () => {
   const h = harness({ responses: [new Error('net ' + TOKEN), { status: 429, body: {} }] });
   h.poller.start(); await new Promise(r => setImmediate(r));
   assert.equal(h.poller.getQuota().status, 'error');
   h.now += 60_000; h.timers.shift()(); await new Promise(r => setImmediate(r));
+  assert.equal(h.poller.getQuota().status, 'rate-limited');
   assert.deepEqual(h.delays, [60000, 120000]);
 });
 test('refresh within minRefreshGap is a no-op', async () => {
@@ -143,4 +144,25 @@ test('token never appears in snapshot or poller state', async () => {
   await h.poller.refresh();
   assert.ok(!JSON.stringify(h.poller.getQuota()).includes(TOKEN));
   assert.ok(!JSON.stringify(Object.entries(h.poller)).includes(TOKEN));
+});
+
+test('429 → rate-limited, and refresh() (e.g. window focus) is suppressed during cooldown', async () => {
+  const h = harness({ responses: [{ status: 429 }, okRes] });
+  await h.poller.refresh();
+  assert.equal(h.poller.getQuota().status, 'rate-limited');
+  h.now += 60_000; // past minRefreshGapMs, inside cooldown
+  await h.poller.refresh();
+  assert.equal(h.fetchCalls, 1);
+  h.now += 5 * 60_000; // cooldown elapsed
+  await h.poller.refresh();
+  assert.equal(h.fetchCalls, 2);
+  assert.equal(h.poller.getQuota().status, 'ok');
+});
+test('429 with retry-after: 0 still waits a floor; larger retry-after is honoured', async () => {
+  const h = harness({ responses: [{ status: 429, headers: { get: () => '0' } }] });
+  h.poller.start(); await new Promise(r => setImmediate(r));
+  assert.ok(h.delays[0] >= 120_000, `delay ${h.delays[0]}`);
+  const h2 = harness({ responses: [{ status: 429, headers: { get: () => '900' } }] });
+  h2.poller.start(); await new Promise(r => setImmediate(r));
+  assert.equal(h2.delays[0], 900_000);
 });

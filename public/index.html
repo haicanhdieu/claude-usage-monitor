@@ -53,7 +53,7 @@ function sessionAndAgents(all){
   host.append(card);
  }
 }
-const QUOTA_NOTES={'no-credentials':'Sign in to Claude Code','denied':'Allow Keychain access for this app to read account quota','api-changed':'quota API changed','error':'Quota refresh failing; showing last value'};
+const QUOTA_NOTES={'no-credentials':'Sign in to Claude Code','denied':'Allow Keychain access for this app to read account quota','api-changed':'quota API changed','rate-limited':'Quota endpoint rate-limited; retrying shortly, showing last value','error':'Quota refresh failing; showing last value'};
 function quota(prefix,q,status){const pct=Number(q?.usedPercentage);const valid=q && Number.isFinite(pct);$(prefix).textContent=valid?`${Math.max(0,100-pct).toFixed(0)}% left`:'Unavailable';$(prefix+'Used').textContent=valid?`${pct.toFixed(1)}% used`:'No quota data';$(prefix+'Bar').style.width=valid?`${Math.max(0,Math.min(100,pct))}%`:'0%';
  const stale=!!(valid&&q.stale);$(prefix+'Bar').closest('.card').classList.toggle('stale-q',stale);
  const badge=$(prefix+'Badge');badge.hidden=!valid;badge.textContent=valid?(q.source==='account'?'account':'hook'):'';
