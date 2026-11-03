@@ -4,6 +4,11 @@
   "version": "0.1.0",
   "scripts": {
     "test": "node --test",
-    "start": "node server.mjs"
-  }
+    "start": "node server.mjs",
+    "app": "electron ."
+  },
+  "devDependencies": {
+    "electron": "^45.2.1"
+  },
+  "main": "app/main.js"
 }

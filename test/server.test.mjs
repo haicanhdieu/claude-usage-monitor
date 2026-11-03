@@ -55,3 +55,15 @@ test('no-credentials falls back to hook and reports quotaStatus', async () => {
     assert.equal(body.quotaStatus, 'no-credentials');
   } finally { await s.close(); }
 });
+
+test('port in use: rejects by default, falls back to a free port when asked', async () => {
+  const first = await startServer({ port: 0, sessionsDir: tmpSessions({}), quotaSource: fake });
+  try {
+    await assert.rejects(startServer({ port: first.port, sessionsDir: tmpSessions({}), quotaSource: fake }), { code: 'EADDRINUSE' });
+    const second = await startServer({ port: first.port, fallbackToFreePort: true, sessionsDir: tmpSessions({}), quotaSource: fake });
+    try {
+      assert.notEqual(second.port, first.port);
+      assert.equal((await fetch(`http://127.0.0.1:${second.port}/api/status`)).status, 200);
+    } finally { await second.close(); }
+  } finally { await first.close(); }
+});
