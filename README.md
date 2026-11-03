@@ -2,7 +2,20 @@
 
 A lightweight **local** Node.js dashboard. Shows 5-hour / 7-day quota, current context, daily token history, **observed live CLI sessions**, **subagents**, their **resolved models**, per-agent tokens and status. No third-party dependencies for the server or collectors. Node.js 20+.
 
-## Run
+## Mac app (recommended)
+
+A double-clickable Electron app with a menu-bar tray (`5h 42% · 7d 18%`). It reads your **account-wide** 5-hour / 7-day quota directly from Anthropic using the Claude Code login already in your Keychain, so no hooks are needed for quota.
+
+- **Build:** `npm install && npm run dist` → `dist/Claude Usage Monitor-*.dmg` and `dist/mac-arm64/Claude Usage Monitor.app`.
+- **Install:** the app is unsigned. Drag it to Applications, then **right-click → Open** the first time.
+- **Keychain prompt:** on first launch macOS asks to let the app read the `Claude Code-credentials` item. Choose Allow (or Always Allow). The token is kept in memory only; the app never refreshes it, writes it to disk, or sends it to the UI.
+- **Tray menu:** Open, Launch at login, Quit. Closing the window hides it to the tray.
+- **Fallback:** if Keychain access is denied or you are signed out, the dashboard shows a status message and falls back to hook-derived quota (badge `hook`; badge `account` when read from Anthropic). Stale values are dimmed with a `stale · Nm old` marker.
+- `node server.mjs` still works as before (CLI mode, no account quota unless run through the app). Run `npm test` for the test suite.
+
+The hooks and status lines below are now **optional for quota**, but they still provide per-session context, live sessions and subagents.
+
+## Run (hooks / CLI mode)
 
 1. Extract the archive, enter the folder, and run `pwd`. Keep the **absolute path**.
 2. Edit `~/.claude/settings.json`, merging the keys with your existing configuration. Replace `/ABSOLUTE/PATH` with the extracted directory. **Do not overwrite other settings or hooks.**
