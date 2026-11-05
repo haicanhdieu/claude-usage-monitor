@@ -7,7 +7,7 @@
 .g{flex:1;text-align:center;min-width:0}
 svg{width:100%;height:auto;display:block}
 .lbl{font-size:8px;font-weight:700;letter-spacing:.06em;color:#91a8a3;margin-top:-1px;line-height:1}
-.val{font-size:11px;font-weight:650;color:#e4ede9;line-height:1.1}
+.val{font-size:12px;font-weight:750;color:#e4ede9;line-height:1.1;text-shadow:0 0 3px #101717,0 1px 2px #101717}
 .needle{transition:transform .6s ease;transform-origin:60px 60px}
 </style></head><body>
 <div id="wrap">
@@ -15,7 +15,7 @@ svg{width:100%;height:auto;display:block}
 <div class="g"><svg viewBox="0 0 120 70"><defs><linearGradient id="gr7" gradientUnits="userSpaceOnUse" x1="10" y1="0" x2="110" y2="0"><stop offset="0.024" stop-color="#e0675a"/><stop offset="0.273" stop-color="#e0b04a"/><stop offset="0.854" stop-color="#59c8a2"/></linearGradient></defs><path d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#344340" stroke-width="9" stroke-linecap="round"/><path id="a7" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="url(#gr7)" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/><g id="n7" class="needle"><line x1="60" y1="60" x2="60" y2="22" stroke="#e4ede9" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="60" cy="60" r="4" fill="#e4ede9"/></svg><div class="lbl">7D</div><div class="val" id="v7">—</div></div>
 </div>
 <script type="module">
-import { gaugeState } from '/gauge.mjs';
+import { gaugeState, valueColor } from '/gauge.mjs';
 const $ = (id) => document.getElementById(id);
 function draw(k, q) {
   const g = gaugeState(q);
@@ -23,6 +23,7 @@ function draw(k, q) {
   $('n' + k).style.opacity = g.valid ? 1 : .35;
   const arc = $('a' + k);
   arc.setAttribute('stroke-dasharray', `${g.valid ? (g.angle + 90) / 1.8 : 0} 100`);
+  $('v' + k).style.color = g.valid ? valueColor(g.left) : '';
   $('v' + k).textContent = g.valid ? `${g.left}%${g.stale ? '*' : ''}` : '—';
 }
 async function update() {
