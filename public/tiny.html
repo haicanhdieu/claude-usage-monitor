@@ -11,8 +11,8 @@ svg{width:100%;height:auto;display:block}
 .needle{transition:transform .6s ease;transform-origin:60px 60px}
 </style></head><body>
 <div id="wrap">
-<div class="g"><svg viewBox="0 0 120 70"><path d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#344340" stroke-width="9" stroke-linecap="round"/><path id="a5" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#5b6b67" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/><g id="n5" class="needle"><line x1="60" y1="60" x2="60" y2="22" stroke="#e4ede9" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="60" cy="60" r="4" fill="#e4ede9"/></svg><div class="lbl">5H</div><div class="val" id="v5">—</div></div>
-<div class="g"><svg viewBox="0 0 120 70"><path d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#344340" stroke-width="9" stroke-linecap="round"/><path id="a7" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#5b6b67" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="0 100"/><g id="n7" class="needle"><line x1="60" y1="60" x2="60" y2="22" stroke="#e4ede9" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="60" cy="60" r="4" fill="#e4ede9"/></svg><div class="lbl">7D</div><div class="val" id="v7">—</div></div>
+<div class="g"><svg viewBox="0 0 120 70"><path d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#344340" stroke-width="9" stroke-linecap="round"/><path data-color="0" data-range="0,15" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#e0675a" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="15 85"/><path data-color="1" data-range="15,40" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#e0b04a" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="25 75" stroke-dashoffset="-15"/><path id="a5" data-color="2" data-range="40,100" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#59c8a2" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="60 40" stroke-dashoffset="-40"/><g id="n5" class="needle"><line x1="60" y1="60" x2="60" y2="22" stroke="#e4ede9" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="60" cy="60" r="4" fill="#e4ede9"/></svg><div class="lbl">5H</div><div class="val" id="v5">—</div></div>
+<div class="g"><svg viewBox="0 0 120 70"><path d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#344340" stroke-width="9" stroke-linecap="round"/><path data-color="0" data-range="0,15" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#e0675a" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="15 85"/><path data-color="1" data-range="15,40" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#e0b04a" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="25 75" stroke-dashoffset="-15"/><path id="a7" data-color="2" data-range="40,100" d="M10 60A50 50 0 0 1 110 60" fill="none" stroke="#59c8a2" stroke-width="9" stroke-linecap="round" pathLength="100" stroke-dasharray="60 40" stroke-dashoffset="-40"/><g id="n7" class="needle"><line x1="60" y1="60" x2="60" y2="22" stroke="#e4ede9" stroke-width="2.5" stroke-linecap="round"/></g><circle cx="60" cy="60" r="4" fill="#e4ede9"/></svg><div class="lbl">7D</div><div class="val" id="v7">—</div></div>
 </div>
 <script type="module">
 import { gaugeState } from '/gauge.mjs';
@@ -21,9 +21,29 @@ function draw(k, q) {
   const g = gaugeState(q);
   $('n' + k).style.transform = `rotate(${g.angle}deg)`;
   $('n' + k).style.opacity = g.valid ? 1 : .35;
-  const arc = $('a' + k);
-  arc.setAttribute('stroke', g.color);
-  arc.setAttribute('stroke-dasharray', `${g.valid ? (g.angle + 90) / 1.8 : 0} 100`);
+  const fill = g.valid ? (g.angle + 90) / 1.8 : 0;
+  const svg = $('a' + k).parentElement;
+  // Segments: red(0-15), orange(15-40), green(40-100)
+  const ranges = [[0, 15], [15, 40], [40, 100]];
+  Array.from(svg.querySelectorAll('[data-color]')).forEach((arc, i) => {
+    const [start, end] = ranges[i];
+    const segmentSize = end - start;
+    if (fill <= start) {
+      arc.setAttribute('stroke-dasharray', '0 100');
+    } else if (fill >= end) {
+      // Restore original dasharray for full segment
+      const origDash = arc.getAttribute('data-dash') || arc.style.strokeDasharray;
+      if (!origDash) {
+        if (i === 0) arc.setAttribute('stroke-dasharray', '15 85');
+        else if (i === 1) arc.setAttribute('stroke-dasharray', '25 75');
+        else arc.setAttribute('stroke-dasharray', '60 40');
+      }
+    } else {
+      // Clip at fill position within segment
+      const fillInSegment = fill - start;
+      arc.setAttribute('stroke-dasharray', `${fillInSegment} ${segmentSize - fillInSegment} 100`);
+    }
+  });
   $('v' + k).textContent = g.valid ? `${g.left}%${g.stale ? '*' : ''}` : '—';
 }
 async function update() {
